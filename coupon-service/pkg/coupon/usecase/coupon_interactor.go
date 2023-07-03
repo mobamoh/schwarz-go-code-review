@@ -3,10 +3,11 @@ package usecase
 import (
 	"context"
 	"github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/domain"
+	"github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/interactor/dto"
 )
 
 type CouponInteractor interface {
-	ApplyCoupon(context.Context, domain.Basket, string) (*domain.Basket, error)
-	CreateCoupon(context.Context, int, string, int) any
-	GetCoupons(context.Context, []string) ([]domain.Coupon, error)
+	Apply(context.Context, dto.ApplyRequest) (*dto.ApplyResponse, error)
+	Create(context.Context, int, string, int) any
+	List(context.Context) ([]domain.Coupon, error)
 }

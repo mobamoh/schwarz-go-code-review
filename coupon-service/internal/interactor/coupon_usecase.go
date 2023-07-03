@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/domain"
+	"github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/interactor/dto"
 )
 
 type Coupon struct {
@@ -16,22 +17,33 @@ func NewCoupon(repo domain.CouponRepository) *Coupon {
 	}
 }
 
-func (c *Coupon) Apply(ctx context.Context, basket domain.Basket, code string) (b *domain.Basket, e error) {
-	b = &basket
-	coupon, err := c.repository.FindByCode(ctx, code)
+func (c *Coupon) Apply(ctx context.Context, data dto.ApplyRequest) (*dto.ApplyResponse, error) {
+	coupon, err := c.repository.FindByCode(ctx, data.CouponCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("no valid coupon with code %v found", data.CouponCode)
 	}
 
-	if b.Value > 0 {
-		b.AppliedDiscount = coupon.Discount
-		b.ApplicationSuccessful = true
-	}
-	if b.Value == 0 {
-		return
+	cart, err := c.repository.FindCartByCode(ctx, data.CartId)
+	if err != nil {
+		return nil, fmt.Errorf("no basket with id %v found", data.CartId)
 	}
 
-	return nil, fmt.Errorf("Tried to apply discount to negative value")
+	// if we assume there is a cart-service,
+	// this should trigger and event which will be handled by Cart Aggregate
+	// This should be handled using SAGA
+	if cart.Value > 0 {
+		cart.AppliedDiscount = coupon.Discount
+		cart.ApplicationSuccessful = true
+		// Call save cart
+	} else {
+		return nil, fmt.Errorf("failed to apply coupon %v to cart %v", data.CouponCode, data.CartId)
+	}
+
+	res := dto.ApplyResponse{
+		Basket: cart,
+		Err:    nil,
+	}
+	return &res, nil
 }
 
 func (c *Coupon) Create(ctx context.Context, couponData domain.CouponRequestData) (*domain.Coupon, error) {
