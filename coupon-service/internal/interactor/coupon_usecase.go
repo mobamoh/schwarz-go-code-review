@@ -7,6 +7,7 @@ import (
 	"github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/interactor/dto"
 )
 
+// Coupon Domain Service
 type Coupon struct {
 	repository domain.CouponRepository
 }
@@ -17,15 +18,20 @@ func NewCoupon(repo domain.CouponRepository) *Coupon {
 	}
 }
 
-func (c *Coupon) Apply(ctx context.Context, data dto.ApplyRequest) (*dto.ApplyResponse, error) {
+func (c *Coupon) Apply(ctx context.Context, data dto.ApplyRequest) *dto.ApplyResponse {
+	res := dto.ApplyResponse{}
 	coupon, err := c.repository.FindByCode(ctx, data.CouponCode)
 	if err != nil {
-		return nil, fmt.Errorf("no valid coupon with code %v found", data.CouponCode)
+		res.Basket = nil
+		res.Error = fmt.Errorf("no valid coupon with code %v found", data.CouponCode)
+		return &res
 	}
 
 	cart, err := c.repository.FindCartByCode(ctx, data.CartId)
 	if err != nil {
-		return nil, fmt.Errorf("no basket with id %v found", data.CartId)
+		res.Basket = nil
+		res.Error = fmt.Errorf("no basket with id %v found", data.CartId)
+		return &res
 	}
 
 	// if we assume there is a cart-service,
@@ -36,40 +42,45 @@ func (c *Coupon) Apply(ctx context.Context, data dto.ApplyRequest) (*dto.ApplyRe
 		cart.ApplicationSuccessful = true
 		// Call save cart
 	} else {
-		return nil, fmt.Errorf("failed to apply coupon %v to cart %v", data.CouponCode, data.CartId)
+		res.Basket = nil
+		res.Error = fmt.Errorf("failed to apply coupon %v to cart %v", data.CouponCode, data.CartId)
+		return &res
 	}
 
-	res := dto.ApplyResponse{
-		Basket: cart,
-		Err:    nil,
-	}
-	return &res, nil
+	res.Basket = cart
+	res.Error = nil
+	return &res
 }
 
-func (c *Coupon) Create(ctx context.Context, couponData domain.CouponRequestData) (*domain.Coupon, error) {
-	coupon := domain.NewCoupon(couponData)
-	err := c.repository.Save(ctx, coupon)
+func (c *Coupon) Create(ctx context.Context, data dto.CreateRequest) *dto.CreateResponse {
+	res := dto.CreateResponse{}
+	coupon := domain.NewCoupon(data.Code, data.Discount, data.MinBasketValue)
+	savedCoupon, err := c.repository.Save(ctx, coupon)
 	if err != nil {
-		return nil, err
+		res.Error = fmt.Errorf("failed to create coupon with code %v", data.Code)
+		return &res
 	}
-	return coupon, nil
+	// Basically it's not a good idea to expose internal id,
+	// I assume this call is used by internal BE to create coupon
+	res.CouponId = savedCoupon.ID
+	return &res
 }
 
-func (c *Coupon) GetAll(ctx context.Context, codes []string) ([]domain.Coupon, error) {
-	coupons := make([]domain.Coupon, 0, len(codes))
-	var e error = nil
-
-	for idx, code := range codes {
-		coupon, err := c.repository.FindByCode(ctx, code)
-		if err != nil {
-			if e == nil {
-				e = fmt.Errorf("code: %s, index: %d", code, idx)
-			} else {
-				e = fmt.Errorf("%w; code: %s, index: %d", e, code, idx)
-			}
-		}
-		coupons = append(coupons, *coupon)
+func (c *Coupon) ListAll(ctx context.Context) *dto.ListResponse {
+	res := dto.ListResponse{}
+	coupons, err := c.repository.List(ctx)
+	if err != nil {
+		res.Error = fmt.Errorf("failed to fetch coupons %v", err)
+		return &res
 	}
 
-	return coupons, e
+	for _, coupon := range coupons {
+		coup := dto.CouponData{
+			Code:           coupon.Code,
+			Discount:       coupon.Discount,
+			MinBasketValue: coupon.MinBasketValue,
+		}
+		res.Coupons = append(res.Coupons, &coup)
+	}
+	return &res
 }

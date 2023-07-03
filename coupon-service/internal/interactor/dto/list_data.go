@@ -1,10 +1,15 @@
 package dto
 
-import "github.com/mobamoh/schwarz-go-code-review/coupon-service/internal/domain"
-
 type ListRequest struct {
 }
 
 type ListResponse struct {
-	Coupons []*domain.Coupon `json:"coupons"`
+	Coupons []*CouponData `json:"coupons"`
+	Error   error         `json:"error"`
+}
+
+type CouponData struct {
+	Code           string `json:"code"`
+	Discount       int    `json:"discount"`
+	MinBasketValue int    `json:"minBasketValue"`
 }

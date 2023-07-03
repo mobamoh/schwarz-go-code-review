@@ -11,5 +11,5 @@ type ApplyRequest struct {
 
 type ApplyResponse struct {
 	Basket *domain.Basket `json:"basket"`
-	Err    error          `json:"-"`
+	Error  error          `json:"error"`
 }

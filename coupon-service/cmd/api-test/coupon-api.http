@@ -1,0 +1,11 @@
+GET http://localhost:8080/api/coupon
+
+###
+POST http://localhost:8080/api/coupon
+Content-Type: application/json
+
+{
+  "Code": "summer23",
+  "Discount": 10,
+  "MinBasketValue": 50
+}
