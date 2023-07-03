@@ -1,0 +1,4 @@
+schwarz:
+  info:
+    service: "coupon"
+    version: 0.1.0
